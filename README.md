@@ -1,14 +1,56 @@
-# Welcome to your CDK TypeScript project!
+## Example
+This is a basic CDK TypeScript example that deploys 3 AWS Lambda functions decoupled by Amazon SNS and Amazon SQS.
 
-This is a blank project for TypeScript development with CDK.
+![architecture](./images/architecture_1.png "Architecture")
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+## Setup
 
-## Useful commands
+1. The following prerequisities are required for this example
+  
+```bash
+npm install -g typescript
+npm install -g aws-cdk
+```
 
- * `npm run build`   compile typescript to js
- * `npm run watch`   watch for changes and compile
- * `npm run test`    perform the jest unit tests
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk synth`       emits the synthesized CloudFormation template
+2. Since this CDK project uses ['Assests'](https://docs.aws.amazon.com/cdk/latest/guide/assets.html), you might need to run the following command to provision resources the AWS CDK will need to perform the deployment.
+
+```bash 
+cdk bootstrap
+```
+
+2. Install the dependencies
+
+```bash
+npm install
+```
+
+3. Execute **cdk synth** to synthesize as AWS CloudFormation template
+
+```bash
+cdk synth
+```
+
+4. Execute **cdk deploy** to deploy the template and build the stack
+
+```bash
+cdk deploy
+```
+
+5. The API Gateway will be deployed by the stack and can be tested using the following json object.
+
+```bash
+{
+  "order": {
+    "orderid": "3",
+    "coffeetype": "Flat white",
+    "coffeesize": "Small",
+    "vendorid": "1"
+  }
+}
+```
+
+6. You can also test using curl , make sure you replace <api gateway> with your gateway address 
+
+```bash
+curl <api gateway>/order -d '@data.json' -H "Content-Type: application/json"
+```

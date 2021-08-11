@@ -1,9 +1,139 @@
+import { Topic } from '@aws-cdk/aws-sns';
+import { SqsSubscription } from '@aws-cdk/aws-sns-subscriptions';
+import { Queue } from '@aws-cdk/aws-sqs';
+import { LambdaIntegration, RestApi, Cors} from '@aws-cdk/aws-apigateway';
+import { AttributeType, Table } from '@aws-cdk/aws-dynamodb';
+import { Runtime, Code, Function } from '@aws-cdk/aws-lambda';
+import { SqsEventSource } from '@aws-cdk/aws-lambda-event-sources'
+import { Role, ServicePrincipal, ManagedPolicy, PolicyStatement } from '@aws-cdk/aws-iam';
+import { Bucket } from '@aws-cdk/aws-s3';
 import * as cdk from '@aws-cdk/core';
+
 
 export class SqsSnsLambdaDynamodbStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // The code that defines your stack goes here
+    //create sqs queues
+    const put_object_queue = new Queue(this, "put_object_queue",{
+      queueName: "put_object_queue"
+    })
+
+    const put_item_queue = new Queue(this, "put_item_queue",{
+      queueName: "put_item_queue"      
+    })
+
+    //create sns topic
+    const lambda_api_topic = new Topic(this, "lambda_api_topic",{
+      topicName: "lambda_api_topic",
+      displayName: "lambda_api_topic"
+    })
+
+    lambda_api_topic.addSubscription(new SqsSubscription(put_object_queue))
+    lambda_api_topic.addSubscription(new SqsSubscription(put_item_queue))
+
+    //Create DynamoDB table
+    const dynamoTable = new Table(this, "DynamoDBTable",{
+      partitionKey: {
+        name: 'orderid',
+        type: AttributeType.STRING
+      },
+      tableName: 'CoffeeOrder',
+      removalPolicy: cdk.RemovalPolicy.DESTROY
+    });
+    
+    //Create S3 bucket
+    const bucket = new Bucket(this, "S3Bucket",{
+      removalPolicy: cdk.RemovalPolicy.DESTROY
+    })
+
+    //Setup IAM security for Lambda
+    const role_put_object = new Role(this, "role_put_object",{
+        assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
+        roleName: "lambda_put_object"
+    });
+    
+    const role_put_item = new Role(this, "role_put_item",{
+      assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
+      roleName: "lambda_put_item"
+    });
+
+    const role_lambda_api = new Role(this, "role_lambda_api",{
+      assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
+      roleName: "lambda_api"
+    });
+
+    role_put_object.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"));
+    role_put_item.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"));
+    role_lambda_api.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"));
+
+    role_put_object.addToPolicy(new PolicyStatement({
+      resources: [bucket.bucketArn, bucket.bucketArn + "/*"],
+      actions: ['s3:PutObject'],
+    }));
+    
+    role_put_item.addToPolicy(new PolicyStatement({
+      resources: [dynamoTable.tableArn],
+      actions: ['dynamodb:PutItem'],
+    }));
+
+    role_lambda_api.addToPolicy(new PolicyStatement({
+      resources: [lambda_api_topic.topicArn],
+      actions: ['sns:Publish'],
+    }));
+
+    //Create 2 Lambda function. One for read and one for writing
+    const function_put_item = new Function(this, "function_put_item",{
+      runtime: Runtime.PYTHON_3_7,
+      handler: "lambda_handler.lambda_handler",
+      code: Code.fromAsset("resources/function_put_item"),
+      functionName: "function_put_item",
+      role: role_put_item,
+      environment: {
+        'TABLENAME': 'CoffeeOrder'
+      }
+    });
+    
+    const function_put_object = new Function(this, "function_put_object",{
+      runtime: Runtime.PYTHON_3_7,
+      handler: "lambda_handler.lambda_handler",
+      code: Code.fromAsset("resources/function_put_object"),
+      functionName: "function_put_object",
+      role: role_put_object,
+      environment: {
+        'BUCKETNAME': bucket.bucketName
+      }
+    });
+
+    const function_api = new Function(this, "function_api",{
+      runtime: Runtime.PYTHON_3_7,
+      handler: "lambda_handler.lambda_handler",
+      code: Code.fromAsset("resources/function_api"),
+      functionName: "function_api",
+      role: role_lambda_api,
+      environment: {
+        'TOPIC': lambda_api_topic.topicArn
+      }
+    });
+
+    function_put_item.addEventSource(new SqsEventSource(put_item_queue));
+    function_put_object.addEventSource(new SqsEventSource(put_object_queue));
+
+    //Create REST Api and integrate the Lambda function
+    var api = new RestApi(this, "OrderApi",{
+      restApiName: "sqs_sns_lambda_dynamodb",
+      defaultCorsPreflightOptions: {
+        allowOrigins: Cors.ALL_ORIGINS,
+        allowMethods: Cors.ALL_METHODS}
+    });
+
+    var function_api_integration = new LambdaIntegration(function_api, {
+      requestTemplates: {
+            ["application/json"]: "{ \"statusCode\": \"200\" }"
+        }
+    });
+
+    var apiresource = api.root.addResource("order");
+    apiresource.addMethod("POST", function_api_integration);
   }
 }

@@ -49,7 +49,7 @@ cdk deploy
 }
 ```
 
-6. You can also test using curl , make sure you replace `<api gateway>` with your gateway address. Change the orderid in data.json for each execution. 
+6. You can also test using curl , make sure you replace `<api gateway>` with your gateway address and change the orderid in data.json for each execution. 
 
 ```bash
 curl <api gateway>/order -d '@data.json' -H "Content-Type: application/json"

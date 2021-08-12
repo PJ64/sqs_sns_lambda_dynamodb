@@ -1,5 +1,5 @@
 ## Example
-This is a basic CDK TypeScript example that deploys 3 AWS Lambda functions decoupled by Amazon SNS and Amazon SQS.
+This is a basic CDK TypeScript example that deploys 3 AWS Lambda functions decoupled by Amazon SNS and Amazon SQS. The example also demonstates using Python to put items to Amazon DynamoDB, put object to Amazon S3 and using Amazon SNS message attributes. 
 
 ![architecture](./images/architecture_1.png "Architecture")
 
@@ -49,7 +49,7 @@ cdk deploy
 }
 ```
 
-6. You can also test using curl , make sure you replace <api gateway> with your gateway address 
+6. You can also test using curl , make sure you replace `<api gateway>` with your gateway address. Change the orderid in data.json for each execution. 
 
 ```bash
 curl <api gateway>/order -d '@data.json' -H "Content-Type: application/json"

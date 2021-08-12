@@ -1,6 +1,11 @@
 import json
 import boto3
+import logging
 import os
+from botocore.exceptions import ClientError
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context): 
     dynamodb = boto3.resource('dynamodb')
@@ -9,19 +14,15 @@ def lambda_handler(event, context):
     body =json.loads(event["Records"][0]["body"])
     message = json.loads(body["Message"])
 
-    table.put_item(
-        Item={
-            'orderid': message['order']['orderid'],
-            'coffeetype': message['order']['coffeetype'],
-            'coffeesize': message['order']["coffeesize"],
-            'vendorid': message['order']["vendorid"]
-        })
-    return {
-        'statusCode': 200,
-        'headers': {
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
-        },
-        'body': json.dumps("Order Placed")
-    } 
+    try:
+        table.put_item(
+            Item={
+                'orderid': message['order']['orderid'],
+                'coffeetype': message['order']['coffeetype'],
+                'coffeesize': message['order']["coffeesize"],
+                'vendorid': message['order']["vendorid"]
+            })
+        logger.info("PutItem %s to table %s.",body,table)
+    except ClientError:
+        logger.exception("Couldn't PutItem %s to table %s",body,table)
+        raise

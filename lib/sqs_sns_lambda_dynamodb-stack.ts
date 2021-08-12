@@ -44,7 +44,8 @@ export class SqsSnsLambdaDynamodbStack extends cdk.Stack {
     
     //Create S3 bucket
     const bucket = new Bucket(this, "S3Bucket",{
-      removalPolicy: cdk.RemovalPolicy.DESTROY
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true
     })
 
     //Setup IAM security for Lambda

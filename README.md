@@ -9,9 +9,15 @@ Additional Lambda functions are deployed to get the order item from Amazon Dyanm
 
 ![architecture](./images/architecture_1.png "Architecture")
 
+**Jupyter Notebook Scripts**
+
 1. The first script posts new orders to the API Gateway. The order is written to an Amazon DyanmoDB table and invoice is written to an Amazon S3 bucket.
 
-2. 
+2. The second script creates a json formatter which is used to render the json output in a readable format.
+
+3. The fourth script is used to query items in the Amazon DynamoDB table
+
+4. The final script is used to generate a pre-signed url used to get the object from the S3 bucket.
 
 ## Setup
 

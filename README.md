@@ -1,7 +1,17 @@
 ## Example
-This is a basic CDK TypeScript example that deploys 3 AWS Lambda functions decoupled by Amazon SNS and Amazon SQS. The example also demonstates using Python to put items to Amazon DynamoDB, put object to Amazon S3 and using Amazon SNS message attributes. 
+This is a basic CDK TypeScript example that deploys AWS Lambda functions decoupled by Amazon SNS and Amazon SQS. The example also demonstates using Python to put items to Amazon DynamoDB, put object to Amazon S3 and using Amazon SNS message attributes. 
+
+The first Lambda function integrates with Amazon API Gateway. Messages that are sent to the API Gateway are published using Amazon SNS by fanning out the messages to Amazon SQS queues. The Lambda functions that are associated with the queues process the messages when they are recieved.
+
+The invoice Lambda function writes the message to an Amazon S3 bucket, this is saved as an object. The order Lambda function writes messages to a Amazon DynamoDB table this is saved as an item. The Amazon DynamoDB table is partitioned on an accountid attribute and also includes a sort key on the vendorid attribute, together they form the primary key.
+
+Additional Lambda functions are deployed to get the order item from Amazon DyanmoDB and the object from the Amazon S3 bucket.
 
 ![architecture](./images/architecture_1.png "Architecture")
+
+1. The first script posts new orders to the API Gateway. The order is written to an Amazon DyanmoDB table and invoice is written to an Amazon S3 bucket.
+
+2. 
 
 ## Setup
 
@@ -11,6 +21,7 @@ This is a basic CDK TypeScript example that deploys 3 AWS Lambda functions decou
 npm install -g typescript
 npm install -g aws-cdk
 ```
+Install Jupyter Notebook following instructions on this ['site'](https://jupyter.org/install).
 
 2. Since this CDK project uses ['Assests'](https://docs.aws.amazon.com/cdk/latest/guide/assets.html), you might need to run the following command to provision resources the AWS CDK will need to perform the deployment.
 
@@ -36,21 +47,6 @@ cdk synth
 cdk deploy
 ```
 
-5. The API Gateway will be deployed by the stack and can be tested using the following json object.
+5. Open the Jupyter Notebook in the **client directory** follow the instructions and execute the query.
 
-```bash
-{
-  "order": {
-    "orderid": "3",
-    "coffeetype": "Flat white",
-    "coffeesize": "Small",
-    "vendorid": "1"
-  }
-}
-```
-
-6. You can also test using curl , make sure you replace `<api gateway>` with your gateway address and change the orderid in data.json for each execution. 
-
-```bash
-curl <api gateway>/order -d '@data.json' -H "Content-Type: application/json"
-```
+6. Check the dynamoDB table and S3 bucket

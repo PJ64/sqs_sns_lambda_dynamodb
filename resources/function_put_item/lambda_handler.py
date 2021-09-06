@@ -17,12 +17,17 @@ def lambda_handler(event, context):
     try:
         table.put_item(
             Item={
-                'orderid': message['order']['orderid'],
-                'coffeetype': message['order']['coffeetype'],
-                'coffeesize': message['order']["coffeesize"],
-                'vendorid': message['order']["vendorid"]
+                'accountid': message['order']['accountid'],
+                'vendorid': message['order']["vendorid"],
+                'orderdate':message['order']["orderdate"],
+                'details':{
+                    'coffeetype': message['order']['details']['coffeetype'],
+                    'coffeesize': message['order']['details']["coffeesize"],
+                    'unitprice': message['order']['details']["unitprice"],
+                    'quantity': message['order']['details']["quantity"]
+                },
             })
-        logger.info("PutItem %s to table %s.",body,table)
+        logger.info("PutItem %s to table %s.",message,table)
     except ClientError:
-        logger.exception("Couldn't PutItem %s to table %s",body,table)
+        logger.exception("Couldn't PutItem %s to table %s",message,table)
         raise

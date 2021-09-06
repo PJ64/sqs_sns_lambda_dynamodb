@@ -5,21 +5,20 @@ import os
 from botocore.exceptions import ClientError
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context): 
     sns = boto3.client('sns')    
     body = event["body"]
     topic = os.environ.get('TOPIC')
-    orderid = json.loads(body)['order']['orderid']
+    accountid = json.loads(body)['order']['accountid']
     
     try:
         response = sns.publish(
             TopicArn=topic,
             Message=body,
             MessageAttributes={
-                'orderid': {
-                    'StringValue': orderid,
+                'accountid': {
+                    'StringValue': accountid,
                     'DataType': 'String'
                     }
             }

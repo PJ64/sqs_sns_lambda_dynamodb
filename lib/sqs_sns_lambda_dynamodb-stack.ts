@@ -35,10 +35,14 @@ export class SqsSnsLambdaDynamodbStack extends cdk.Stack {
     //Create DynamoDB table
     const dynamoTable = new Table(this, "DynamoDBTable",{
       partitionKey: {
-        name: 'orderid',
+        name: 'accountid',
         type: AttributeType.STRING
       },
-      tableName: 'CoffeeOrder',
+      sortKey: {
+        name: 'vendorid',
+        type: AttributeType.STRING
+      },
+      tableName: 'sqs_sns_lambda_dynamodb',
       removalPolicy: cdk.RemovalPolicy.DESTROY
     });
     
@@ -51,22 +55,34 @@ export class SqsSnsLambdaDynamodbStack extends cdk.Stack {
     //Setup IAM security for Lambda
     const role_put_object = new Role(this, "role_put_object",{
         assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
-        roleName: "lambda_put_object"
+        roleName: "sqs_sns_lambda_dynamodb_put_object"
     });
     
+    const role_get_object = new Role(this, "role_get_object",{
+      assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
+      roleName: "sqs_sns_lambda_dynamodb_get_object"
+    });
+
     const role_put_item = new Role(this, "role_put_item",{
       assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
-      roleName: "lambda_put_item"
+      roleName: "sqs_sns_lambda_dynamodb_put_item"
     });
+
+    const role_get_item = new Role(this, "role_get_item",{
+      assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
+      roleName: "sqs_sns_lambda_dynamodb_get_item"
+  });
 
     const role_lambda_api = new Role(this, "role_lambda_api",{
       assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
-      roleName: "lambda_api"
+      roleName: "sqs_sns_lambda_dynamodb_api"
     });
 
     role_put_object.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"));
     role_put_item.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"));
     role_lambda_api.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"));
+    role_get_object.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"));
+    role_get_item.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"));
 
     role_put_object.addToPolicy(new PolicyStatement({
       resources: [bucket.bucketArn, bucket.bucketArn + "/*"],
@@ -83,15 +99,25 @@ export class SqsSnsLambdaDynamodbStack extends cdk.Stack {
       actions: ['sns:Publish'],
     }));
 
-    //Create 2 Lambda function. One for read and one for writing
+    role_get_object.addToPolicy(new PolicyStatement({
+      resources: [bucket.bucketArn, bucket.bucketArn + "/*"],
+      actions: ['s3:GetObject'],
+    }));
+    
+    role_get_item.addToPolicy(new PolicyStatement({
+      resources: [dynamoTable.tableArn],
+      actions: ['dynamodb:GetItem'],
+    }));
+
+    //Create Lambda functions. One for read and one for writing
     const function_put_item = new Function(this, "function_put_item",{
       runtime: Runtime.PYTHON_3_7,
       handler: "lambda_handler.lambda_handler",
       code: Code.fromAsset("resources/function_put_item"),
-      functionName: "function_put_item",
+      functionName: "sqs_sns_lambda_dynamodb_put_item",
       role: role_put_item,
       environment: {
-        'TABLENAME': 'CoffeeOrder'
+        'TABLENAME': dynamoTable.tableName
       }
     });
     
@@ -99,10 +125,32 @@ export class SqsSnsLambdaDynamodbStack extends cdk.Stack {
       runtime: Runtime.PYTHON_3_7,
       handler: "lambda_handler.lambda_handler",
       code: Code.fromAsset("resources/function_put_object"),
-      functionName: "function_put_object",
+      functionName: "sqs_sns_lambda_dynamodb_put_object",
       role: role_put_object,
       environment: {
         'BUCKETNAME': bucket.bucketName
+      }
+    });
+
+    const lambda_get_presigned_url = new Function(this, "GetUrlLambdaFunction",{
+      runtime: Runtime.PYTHON_3_7,
+      handler: "lambda_handler.lambda_handler",
+      code: Code.fromAsset("resources/function_get_presigned_url"),
+      functionName: "get_presigned_url",
+      role: role_get_object,
+      environment: {
+        'BUCKETNAME': bucket.bucketName
+      }
+    });
+
+    const lambda_get_order_item = new Function(this, "GetLambdaFunction",{
+      runtime: Runtime.PYTHON_3_7,
+      handler: "lambda_handler.lambda_handler",
+      code: Code.fromAsset("resources/function_get_item"),
+      functionName: "sqs_sns_lambda_dynamodb_get_item",
+      role: role_get_item,
+      environment: {
+        'TABLENAME': dynamoTable.tableName
       }
     });
 
@@ -134,7 +182,14 @@ export class SqsSnsLambdaDynamodbStack extends cdk.Stack {
         }
     });
 
-    var apiresource = api.root.addResource("order");
-    apiresource.addMethod("POST", function_api_integration);
+    var function_get_object_integration = new LambdaIntegration(lambda_get_presigned_url);
+    var function_get_item_integration = new LambdaIntegration(lambda_get_order_item);
+
+    var api_order_resource = api.root.addResource("order");
+    api_order_resource.addMethod("POST", function_api_integration);
+    api_order_resource.addMethod("GET", function_get_item_integration);
+
+    var api_invoice_resource = api.root.addResource("invoice");
+    api_invoice_resource.addMethod("GET", function_get_object_integration);
   }
 }

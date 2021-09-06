@@ -5,17 +5,16 @@ import os
 from botocore.exceptions import ClientError
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
     s3 = boto3.resource('s3')
     bucket = s3.Bucket(os.environ.get('BUCKETNAME'))
     
     body =json.loads(event["Records"][0]["body"])
-    orderid = body["MessageAttributes"]["orderid"]["Value"]        
+    accountid = body["MessageAttributes"]["accountid"]["Value"]        
     message = json.dumps(body["Message"])
     data = message.encode("utf-8")
-    path = 'orderid_' + orderid + '.json'
+    path = 'accountid_' + accountid + '.json'
 
     try:
         bucket.put_object(

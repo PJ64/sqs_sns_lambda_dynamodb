@@ -1,11 +1,16 @@
 ## Example
-This is a basic CDK TypeScript example that deploys AWS Lambda functions decoupled by Amazon SNS and Amazon SQS. The example also demonstates using Python to put items to Amazon DynamoDB, put object to Amazon S3 and using Amazon SNS message attributes. 
+This example uses the AWS CDK to deploy an Amazon API Gateway, AWS Lambda functions, Amazon DynamoDB table, Amazon SQS queue, Amazon SNS topic and an Amazon S3 bucket. 
 
-The first Lambda function integrates with Amazon API Gateway. Messages that are sent to the API Gateway are published using Amazon SNS by fanning out the messages to Amazon SQS queues. The Lambda functions that are associated with the queues process the messages when they are recieved.
+The deployed architecture decouples the Lambda functions from each other by using Amazon SQS and Amazon SNS. The Amazon API Gateway integrates with a Lambda function, which accepts an order that is posted by the client. The function extracts the body from the event and publishes it as a message to an Amazon SNS topic.
 
-The invoice Lambda function writes the message to an Amazon S3 bucket, this is saved as an object. The order Lambda function writes messages to a Amazon DynamoDB table this is saved as an item. The Amazon DynamoDB table is partitioned on an accountid attribute and also includes a sort key on the vendorid attribute, together they form the primary key.
+The SNS topic sends the published message to a couple of Amazon SQS queues, which are subscribers. The Lambda function associated with each queue is invoked when the message arrives in the queue.
 
-Additional Lambda functions are deployed to get the order item from Amazon DyanmoDB and the object from the Amazon S3 bucket.
+The invoice Lambda function writes the message to an Amazon S3 bucket, this is saved as an object. 
+
+The order Lambda function writes messages to an Amazon DynamoDB table, this is saved as an item. The Amazon DynamoDB table is partitioned on an accountid attribute and also includes a sort key on the vendorid attribute, together they form the primary key.
+
+Additional Lambda functions are deployed to get the order item from Amazon DynamoDB and the object from the Amazon S3 bucket.
+
 
 ![architecture](./images/architecture_1.png "Architecture")
 

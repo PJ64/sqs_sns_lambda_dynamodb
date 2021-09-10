@@ -52,7 +52,7 @@ export class SqsSnsLambdaDynamodbStack extends cdk.Stack {
       autoDeleteObjects: true
     })
 
-    //Setup IAM security for Lambda
+    //Create IAM roles
     const role_put_object = new Role(this, "role_put_object",{
         assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
         roleName: "sqs_sns_lambda_dynamodb_put_object"
@@ -78,6 +78,7 @@ export class SqsSnsLambdaDynamodbStack extends cdk.Stack {
       roleName: "sqs_sns_lambda_dynamodb_api"
     });
 
+    //Setup role permissions
     role_put_object.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"));
     role_put_item.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"));
     role_lambda_api.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"));
@@ -158,7 +159,7 @@ export class SqsSnsLambdaDynamodbStack extends cdk.Stack {
       runtime: Runtime.PYTHON_3_7,
       handler: "lambda_handler.lambda_handler",
       code: Code.fromAsset("resources/function_api"),
-      functionName: "function_api",
+      functionName: "sqs_sns_lambda_dynamodb_api",
       role: role_lambda_api,
       environment: {
         'TOPIC': lambda_api_topic.topicArn

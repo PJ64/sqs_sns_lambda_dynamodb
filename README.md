@@ -8,7 +8,7 @@ There are two Lambda layers included in the example. The X-Ray layer is used to 
 The Amazon DynamoDB table is partitioned on an accountid attribute and also includes a sort key on the vendorid attribute, together they form the primary key. The combination of these keys ensures that customer can only have one active order for each vendor. After the order is processed the item would be removed from the table, similar behaviour to a shopping cart.
 
 
-![architecture](./images/architecture_2.png "Architecture")
+![architecture](../images/architecture_2.png "Architecture")
 
 ## Setup
 
